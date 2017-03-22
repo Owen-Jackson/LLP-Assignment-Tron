@@ -1,11 +1,14 @@
 #include <SFML/Graphics.hpp>
+#include "UserClient.h"
 
 int main()
 {
 	sf::RenderWindow window(sf::VideoMode(200, 200), "SFML works!");
 	sf::CircleShape shape(100.f);
 	shape.setFillColor(sf::Color::Green);
-
+	//UserClient user;
+	UserClient user;
+	user.client();
 	while (window.isOpen())
 	{
 		sf::Event event;
