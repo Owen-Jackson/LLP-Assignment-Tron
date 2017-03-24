@@ -35,14 +35,9 @@ void UserClient::input(TcpClient& client)
 {
 	while (true)
 	{
-		std::string input;
-		std::string test;
-		std::getline(std::cin, input);
-
 		//send the input to the server
 		sf::Packet packet;
-		packet << NetMsg::CHAT << input;
-		//client.send(packet);
+		client.send(packet);
 	}
 }
 

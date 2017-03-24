@@ -72,6 +72,7 @@ void Server::receiveMsg(TcpClients& tcp_clients, sf::SocketSelector& selector)
 			{
 				std::cout << "pong called" << std::endl;
 				iter.pong();
+				std::cout << "Client latency: " << iter.getLatency().count() << "us" << std::endl;
 			}
 		}
 	}

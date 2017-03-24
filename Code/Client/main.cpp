@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include "UserClient.h"
+#include <future>
 
 int main()
 {
@@ -8,7 +9,6 @@ int main()
 	shape.setFillColor(sf::Color::Green);
 	//UserClient user;
 	UserClient user;
-	user.client();
 	while (window.isOpen())
 	{
 		sf::Event event;
@@ -17,6 +17,11 @@ int main()
 			if (event.type == sf::Event::Closed)
 				window.close();
 		}
+
+		auto handle = std::async(std::launch::async, [&]
+		{
+			user.client();
+		});
 
 		window.clear();
 		window.draw(shape);
