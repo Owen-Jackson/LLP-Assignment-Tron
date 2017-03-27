@@ -35,8 +35,8 @@ void UserClient::input(TcpClient& client)
 {
 	while (true)
 	{
-		//send the input to the server
 		sf::Packet packet;
+		packet << NetMsg::PLAYER << player.get();
 		client.send(packet);
 	}
 }

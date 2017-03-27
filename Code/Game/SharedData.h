@@ -5,6 +5,7 @@ enum NetMsg : sf::Int32
 {
 	INVALID = 0,
 	CHAT = 1,
-	PING = 2,
-	PONG = 3,
+	PLAYER = 2,
+	PING = 3,
+	PONG = 4,
 };

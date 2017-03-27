@@ -127,7 +127,6 @@ void Server::ping(TcpClients& tcp_clients)
 		const auto & timestamp = client.getPingTime();
 		const auto now = std::chrono::steady_clock::now();
 		auto delta = now - timestamp;
-		//client.setLatency(std::chrono::duration_cast<std::chrono::microseconds>(delta));
 		if (delta > timeout)
 		{
 			client.ping();

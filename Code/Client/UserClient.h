@@ -1,5 +1,7 @@
 #pragma once
 #include <SFML/Network.hpp>
+#include <SFML\Graphics.hpp>
+#include "Player.h"
 #include <memory>
 #include <vector>
 
@@ -16,4 +18,10 @@ public:
 	bool connect(TcpClient&);
 	void input(TcpClient&);
 	void client();
+
+	Player* getPlayer() { return player.get(); };
+
+private:
+	std::unique_ptr<Player> player = nullptr;
+	std::vector<Player*> enemies;
 };
