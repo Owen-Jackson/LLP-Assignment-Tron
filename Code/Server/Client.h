@@ -20,6 +20,7 @@ public:
 	void setLatency(std::chrono::microseconds);
 	const auto& getPingTime() const { return timestamp; };
 	const auto& getLatency() const { return latency; };
+	int getClientID() const { return id; };
 
 	void ping();
 	void pong();

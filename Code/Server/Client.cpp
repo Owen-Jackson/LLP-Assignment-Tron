@@ -3,7 +3,7 @@
 
 Client::Client(sf::TcpSocket* _socket) : socket(_socket)
 {
-	;
+	next_id = 0;
 }
 
 Client::Client(Client &&rhs)

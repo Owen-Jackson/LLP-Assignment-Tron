@@ -1,5 +1,5 @@
 #pragma once
-#include <SFML/Network.hpp>
+#include <SFML\Network.hpp>
 #include <SFML\Graphics.hpp>
 #include "Player.h"
 #include <memory>
@@ -12,7 +12,7 @@ using TcpClients = std::vector<TcpClient>;
 class UserClient
 {
 public:
-	UserClient() = default;
+	UserClient();
 	~UserClient() = default;
 
 	bool connect(TcpClient&);
@@ -20,6 +20,8 @@ public:
 	void client();
 
 	Player* getPlayer() { return player.get(); };
+	std::vector<Player*> getEnemies() { return enemies; };
+	const void addOpponent(Player* opponent);
 
 private:
 	std::unique_ptr<Player> player = nullptr;

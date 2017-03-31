@@ -13,20 +13,24 @@ const int SERVER_TCP_PORT = 53000;
 const sf::IpAddress SERVER_IP = "127.0.0.1";
 int CURRENT_PORT = SERVER_TCP_PORT;
 
+UserClient::UserClient()
+{
+	player = std::make_unique<Player>();
+}
+
 bool UserClient::connect(TcpClient& client)
 {
 	//attempt to connect to server
 	auto status = client.connect(SERVER_IP, SERVER_TCP_PORT);
 	if (status != sf::Socket::Done)
 	{
-		std::cout << "could not connect" << std::endl;
+		player->getSprite()->setFillColor(sf::Color::Blue);
 		return false;
 	}
 
-
 	//successful connect
-	std::cout << "Connected to server: " << SERVER_IP;
-	std::cout << std::endl;
+	player->getSprite()->setFillColor(sf::Color::Red);
+	client.setBlocking(false);
 
 	return true;
 }
@@ -36,6 +40,8 @@ void UserClient::input(TcpClient& client)
 	while (true)
 	{
 		sf::Packet packet;
+		//std::string input;
+		//std::getline(std::cin, input);
 		packet << NetMsg::PLAYER << player.get();
 		client.send(packet);
 	}
@@ -44,9 +50,9 @@ void UserClient::input(TcpClient& client)
 void UserClient::client()
 {
 	TcpClient socket;
-	if (!connect(socket))
+	while(!connect(socket))
 	{
-		return;
+		;
 	}
 
 	auto handle = std::async(std::launch::async, [&]
@@ -79,6 +85,12 @@ void UserClient::client()
 			}
 		} while (status != sf::Socket::Disconnected);
 	});
-	//std::cout << "disconnected";
+
 	return input(socket);
+}
+
+const void UserClient::addOpponent(Player* opponent)
+{
+	enemies.resize(enemies.size() + 1);
+	enemies.insert(enemies.end(), opponent);
 }
