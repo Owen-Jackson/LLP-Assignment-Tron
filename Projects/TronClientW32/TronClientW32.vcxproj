@@ -86,11 +86,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Code\Client\main.cpp" />
-    <ClCompile Include="..\..\Code\Client\Player.cpp" />
     <ClCompile Include="..\..\Code\Client\UserClient.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Code\Client\Player.h" />
     <ClInclude Include="..\..\Code\Client\UserClient.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,5 +1,6 @@
 #include "Client.h"
 #include <Game/SharedData.h>
+#include <iostream>
 
 Client::Client(sf::TcpSocket* _socket) : socket(_socket)
 {
@@ -26,9 +27,23 @@ bool Client::operator==(const Client& rhs)
 	return id == rhs.id;
 }
 
+void Client::setPosition(float x, float y)
+{
+	data.xPos = x;
+	data.yPos = y;
+}
+
 sf::TcpSocket& Client::getSocket()
 {
 	return *socket;
+}
+
+std::pair<float, float>& Client::getPosition()
+{
+	std::pair<float, float> coords;
+	coords.first = data.xPos;
+	coords.second = data.yPos;
+	return coords;
 }
 
 void Client::setLatency(std::chrono::microseconds delay)
@@ -53,4 +68,33 @@ void Client::pong()
 	latency = std::chrono::duration_cast<std::chrono::microseconds>(end - timestamp);
 
 	latency /= 2;
+}
+
+void Client::Tick()
+{
+	switch (data.move_dir)
+	{
+	case PlayerMove::LEFT:
+		data.xPos -= move_speed;
+		break;
+	case PlayerMove::RIGHT:
+		data.xPos += move_speed;
+		break;
+	case PlayerMove::UP:
+		data.yPos -= move_speed;
+		break;
+	case PlayerMove::DOWN:
+		data.yPos += move_speed;
+		break;
+	default:
+		;
+	}
+}
+
+void Client::checkCollisions()
+{
+	/*if (data.xPos + data.sprite->getSize().x)
+	{
+		;
+	}*/
 }

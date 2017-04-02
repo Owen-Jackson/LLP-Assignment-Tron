@@ -1,7 +1,7 @@
 #pragma once
 #include <SFML\Network.hpp>
 #include <SFML\Graphics.hpp>
-#include "Player.h"
+#include <Game\SharedData.h>
 #include <memory>
 #include <vector>
 
@@ -19,11 +19,15 @@ public:
 	void input(TcpClient&);
 	void client();
 
-	Player* getPlayer() { return player.get(); };
-	std::vector<Player*> getEnemies() { return enemies; };
-	const void addOpponent(Player* opponent);
+	void setControls(InitData&);
+	std::vector<PlayerData>& getPlayers() { return players; };
+	PlayerData& getPlayer() { return my_player; };
+	std::unique_ptr<sf::RectangleShape>& getPlayerSprite() { return my_player.sprite; };
 
 private:
-	std::unique_ptr<Player> player = nullptr;
-	std::vector<Player*> enemies;
+	sf::Uint8 move_speed = 2.0f;
+	PlayerData my_player;
+	InitData controls;
+	std::vector<PlayerData> players;
+	sf::Mutex mutex;
 };

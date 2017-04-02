@@ -3,8 +3,16 @@
 Player::Player()
 {
 	sprite = std::make_unique<sf::RectangleShape>();
-	sprite->setSize(sf::Vector2f(100.0f, 50.0f));
+	sprite->setSize(sf::Vector2f(50.0f, 50.0f));
 	sprite->setFillColor(sf::Color::Cyan);
+}
+
+void Player::setData(InitData& new_controls)
+{
+	player_data.up = new_controls.up;
+	player_data.left = new_controls.left;
+	player_data.down = new_controls.down;
+	player_data.right = new_controls.right;
 }
 
 void Player::Tick()
@@ -22,7 +30,6 @@ void Player::Tick()
 		break;
 	case PlayerMove::DOWN:
 		position.y += move_speed;
-		sprite->setFillColor(sf::Color::Green);
 		break;
 	default:
 		;

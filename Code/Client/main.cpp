@@ -5,7 +5,7 @@
 #include <future>
 #include <string>
 
-using Key = sf::Keyboard;
+using Key = sf::Keyboard::Key;
 
 void runThread(UserClient* client)
 {
@@ -14,21 +14,20 @@ void runThread(UserClient* client)
 
 int main()
 {
-	sf::RenderWindow window(sf::VideoMode(600, 600), "SFML works!");
+	sf::RenderWindow window(sf::VideoMode(WindowSize::width, WindowSize::height), "Tron Game");
 
 	//get font for text
 	sf::Font font;
 	font.loadFromFile("../../Libs/Fonts/arial.ttf");
 
 	//create text
-	sf::Text text;
-	std::string str;
-	text.setFont(font);
-	text.setPosition(300.0f, 300.0f);
-	//text.setString("hello world");
-	text.setCharacterSize(30);
-	text.setFillColor(sf::Color::White);
-	text.setStyle(sf::Text::Regular);
+	//*sf::Text text;
+	//std::string str;
+	//text.setFont(font);
+	//text.setPosition(300.0f, 300.0f);*/
+	//text.setCharacterSize(30);
+	//text.setFillColor(sf::Color::White);
+	//text.setStyle(sf::Text::Regular);
 
 	//create client to connect to server
 	UserClient* user = new UserClient();
@@ -50,41 +49,27 @@ int main()
 				window.close();
 			}
 
-			if (event.type == sf::Event::KeyPressed)
-			{			
-				switch (event.key.code)
-				{
-				case Key::W:
-					user->getPlayer()->setMoveDir(UP);
-					break;
-				case Key::A:
-					user->getPlayer()->setMoveDir(LEFT);
-					break;
-				case Key::S:
-					user->getPlayer()->setMoveDir(DOWN);
-					break;
-				case Key::D:
-					user->getPlayer()->setMoveDir(RIGHT);
-					break;
-				}
-			}
-
 			//Text entered event for chat (stretch goal)
-			if (event.type == sf::Event::TextEntered)
+			/*if (event.type == sf::Event::TextEntered)
 			{
 				if (event.text.unicode < 128)
 				{
 					str += static_cast<char>(event.text.unicode);
 					text.setString(str);
 				}
-			}
+			}*/
 		}
 
-		user->getPlayer()->Tick();
 		window.clear();
+		for (auto& player : user->getPlayers())
+		{
+			window.draw(*(player.sprite.get()));
+		}
+		//window.draw(*(user->getPlayerSprite()));
 		//window.draw(shape);
-		window.draw(text);
-		window.draw(*(user->getPlayer()->getSprite()));
+		//window.draw(text);
+		//window.draw(*(user->getPlayer()->getSprite()));
+		//window.draw(*(user->getOpponent()->getSprite()));
 		/*for (auto& enemy : user->getEnemies())
 		{
 			window.draw(enemy->getSprite());
