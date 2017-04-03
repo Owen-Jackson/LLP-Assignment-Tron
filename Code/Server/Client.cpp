@@ -38,12 +38,10 @@ sf::TcpSocket& Client::getSocket()
 	return *socket;
 }
 
-std::pair<float, float>& Client::getPosition()
+sf::Vector2f& Client::getPosition()
 {
-	std::pair<float, float> coords;
-	coords.first = data.xPos;
-	coords.second = data.yPos;
-	return coords;
+	sf::Vector2f pos = sf::Vector2f(data.xPos, data.yPos);
+	return pos;
 }
 
 void Client::setLatency(std::chrono::microseconds delay)
@@ -89,12 +87,25 @@ void Client::Tick()
 	default:
 		;
 	}
+	checkCollisions();
 }
 
 void Client::checkCollisions()
 {
-	/*if (data.xPos + data.sprite->getSize().x)
+	if (data.xPos + sprite_bound_max > WindowSize::width)
 	{
-		;
-	}*/
+		data.xPos = WindowSize::width - sprite_bound_max;
+	}
+	if (data.xPos < 0)
+	{
+		data.xPos = 0;
+	}
+	if (data.yPos + sprite_bound_max > WindowSize::height)
+	{
+		data.yPos = WindowSize::height - sprite_bound_max;
+	}
+	if (data.yPos < 0)
+	{
+		data.yPos = 0;
+	}
 }

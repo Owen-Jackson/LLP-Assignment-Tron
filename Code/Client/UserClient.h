@@ -18,16 +18,17 @@ public:
 	bool connect(TcpClient&);
 	void input(TcpClient&);
 	void client();
+	void addOpponent(sf::Packet& packet);
 
+
+	void createPlayers();
 	void setControls(InitData&);
-	std::vector<PlayerData>& getPlayers() { return players; };
-	PlayerData& getPlayer() { return my_player; };
-	std::unique_ptr<sf::RectangleShape>& getPlayerSprite() { return my_player.sprite; };
+	std::vector<std::unique_ptr<sf::RectangleShape>>& getPlayerSprites() { return player_sprites; };
 
 private:
-	sf::Uint8 move_speed = 2.0f;
-	PlayerData my_player;
 	InitData controls;
-	std::vector<PlayerData> players;
+	PlayerData my_data;
+	StartData start_data;
+	std::vector<std::unique_ptr<sf::RectangleShape>> player_sprites;
 	sf::Mutex mutex;
 };

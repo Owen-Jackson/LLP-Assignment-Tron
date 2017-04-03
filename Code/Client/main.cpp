@@ -4,6 +4,7 @@
 #include <iostream>
 #include <future>
 #include <string>
+#include <random>
 
 using Key = sf::Keyboard::Key;
 
@@ -14,6 +15,8 @@ void runThread(UserClient* client)
 
 int main()
 {
+	srand(unsigned int(time(NULL)));
+
 	sf::RenderWindow window(sf::VideoMode(WindowSize::width, WindowSize::height), "Tron Game");
 
 	//get font for text
@@ -33,7 +36,7 @@ int main()
 	UserClient* user = new UserClient();
 
 	//limit framerate
-	window.setFramerateLimit(60);
+	window.setFramerateLimit(30);
 
 	//Connect the client to the server in a separate thread
 	std::thread thread(&runThread, user);
@@ -61,9 +64,9 @@ int main()
 		}
 
 		window.clear();
-		for (auto& player : user->getPlayers())
+		for (auto& player : user->getPlayerSprites())
 		{
-			window.draw(*(player.sprite.get()));
+			window.draw(*player);
 		}
 		//window.draw(*(user->getPlayerSprite()));
 		//window.draw(shape);

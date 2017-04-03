@@ -14,23 +14,35 @@ const int SERVER_TCP_PORT = 53000;
 const sf::IpAddress SERVER_IP = "127.0.0.1";
 int CURRENT_PORT = SERVER_TCP_PORT;
 
+sf::Packet& operator << (sf::Packet& packet, sf::Color colour)
+{
+	packet << colour.r << colour.g << colour.b << colour.a;
+	return packet;
+}
+
+sf::Packet& operator << (sf::Packet& packet, sf::Vector2f& pos)
+{
+	packet << pos.x << pos.y;
+	return packet;
+}
+
 Server::Server()
 {
 	//Setup keyboard controls list
-	ControlKeys temp;
-	controls_set = { temp.player1, temp.player2, temp.player3, temp.player4 };
+	/*ControlKeys temp;
+	controls_set = { temp.player1, temp.player2, temp.player3, temp.player4 };*/
 
 	//Create grid positions
-	std::cout << "generating grid positions" << std::endl;
-	for (int i = 0; i < WindowSize::grid_size; i++)
-	{
-		for (int j = 0; j < WindowSize::grid_size; j++)
-		{
-			sf::Vector2f position = sf::Vector2f(((float)WindowSize::width / WindowSize::grid_size) * j, ((float)WindowSize::height / WindowSize::grid_size) * i);
-			std::cout << position.x << " , " << position.y << std::endl;
-			gridPositions.push_back(position);
-		}
-	}
+	//std::cout << "generating grid positions" << std::endl;
+	//for (int i = 0; i < WindowSize::grid_size; i++)
+	//{
+	//	for (int j = 0; j < WindowSize::grid_size; j++)
+	//	{
+	//		sf::Vector2f position = sf::Vector2f(((float)WindowSize::width / WindowSize::grid_size) * j, ((float)WindowSize::height / WindowSize::grid_size) * i);
+	//		std::cout << position.x << " , " << position.y << std::endl;
+	//		gridPositions.push_back(position);
+	//	}
+	//}
 }
 
 bool Server::bindServerPort(sf::TcpListener& listener)
@@ -59,21 +71,51 @@ void Server::connect(sf::TcpListener& tcp_listener, sf::SocketSelector& selector
 		mutex.lock();
 		sf::Packet init_pack;
 		init_pack << NetMsg::INIT;
-		for (int i = 0; i < 4; i++)
-		{
-			init_pack << controls_set[player_number % 4][i];
-			std::cout << "sending: " << controls_set[player_number % 4][i] << std::endl;
-		}
+
+		//add client ID
+		init_pack << player_number;
+		std::cout << player_number << std::endl;
+
+		//add controls
+		init_pack << start_data.up[player_number % 4] << start_data.left[player_number % 4] << start_data.down[player_number % 4] << start_data.right[player_number % 4];
+		//std::cout << player_number % 4 << std::endl;
+		//add player color
+		init_pack << start_data.colours[player_number % 4];
+
+		//add start position
+		init_pack << start_data.starting_positions[player_number % 4];
+
+		//send pack to new client
 		client.getSocket().send(init_pack);
-		//std::cout << "before vector: " << client.getPosition().first << client.getPosition().second << std::endl;
+
+		//add client to the current list
+		client.setPosition(start_data.starting_positions[player_number % 4].x, start_data.starting_positions[player_number % 4].y);
+		std::cout << "player " << client.getClientID() << " position pre move: " << client.getPosition().x << " , " << client.getPosition().y << std::endl;
 		tcp_clients.push_back(std::move(client));
 		std::cout << "client " << client.getClientID() << " connected" << std::endl;
+
+		//set new client's position
+		tcp_clients[player_number].setPosition(start_data.starting_positions[player_number % 4].x, start_data.starting_positions[player_number % 4].y);
+		std::cout << "player " << tcp_clients[0].getClientID() << " position: " << tcp_clients[0].getPosition().x << " , " << tcp_clients[0].getPosition().y << std::endl;
+		//increment the player number
 		player_number++;
-		tcp_clients[0].setPosition(0, 0);
 		std::cout << "number of players: " << player_number << std::endl;
-		std::pair<sf::Uint32, sf::Uint32> coords = tcp_clients[0].getPosition();
-		//std::cout << "after vector: " << coords.first << " , " << coords.second << std::endl;
+
+		//Tell existing players that a new player has joined
+		sf::Packet rival_appears;
+		rival_appears << NetMsg::NEWPLAYER;
+		rival_appears << client.getClientID();
+		for (auto& iter : tcp_clients)
+		{
+			if (iter == client)
+			{
+				continue;
+			}
+			std::cout << "player " << iter.getClientID() <<" position: " << iter.getPosition().x << " , " << iter.getPosition().y << std::endl;
+			iter.getSocket().send(rival_appears);
+		}
 		mutex.unlock();
+
 		/*if (player_number > 2)
 		{
 			sf::Packet disconnect_pack;
@@ -92,7 +134,6 @@ void Server::disconnect(TcpClients& tcp_clients, Client& client, sf::SocketSelec
 	std::cout << "disconnect occurred" << std::endl;
 	std::cout << "Client " << client.getClientID() << " disconnected" << std::endl;
 	std::cout << "number of clients before: " << tcp_clients.size() << std::endl;
-	//tcp_clients.erase(std::remove(tcp_clients.begin(), tcp_clients.end(), iter),iter);
 	tcp_clients.erase(std::remove(tcp_clients.begin(), tcp_clients.end(), client), tcp_clients.end());
 	std::cout << "number of clients after: " << tcp_clients.size() << std::endl;
 	player_number--;
@@ -136,19 +177,13 @@ void Server::receiveMsg(TcpClients& tcp_clients, sf::SocketSelector& selector)
 			else if (msg == NetMsg::MOVEDIR)
 			{
 				//std::cout << "received player position" << std::endl;
-				//mutex.lock();
 				//get move direction from client as int
 				sf::Uint32 new_dir;
 				packet >> new_dir;
 				//cast direction to PlayerMove enum then store the value
 				PlayerMove direction = static_cast<PlayerMove>(new_dir);
-				if (direction != iter->getMoveDirection())
-				{
-					std::cout << "player 0 is now moving: " << new_dir << std::endl;
-				}
 				iter->setDirection(direction);
-				//std::cout << "player 0 moving: " << new_dir << std::endl;
-				//mutex.unlock();
+				//std::cout << "player " << iter->getClientID() << " moving: " << new_dir << std::endl;
 			}
 			else if (msg == NetMsg::PONG)
 			{
@@ -223,19 +258,28 @@ void Server::ping(TcpClients& tcp_clients)
 //Game loop for updating client positions and collision checks
 void Server::runGame(TcpClients& tcp_clients)
 {
+	sf::Clock clock;
+	sf::Time elapsed;
+	sf::Time FPS = sf::milliseconds(1000/30);
 	while (true)
 	{
 		while (tcp_clients.size() > 0)
 		{
-			mutex.lock();
-			for (auto& client : tcp_clients)
+			//Lock FPS
+			elapsed = clock.getElapsedTime();
+			if (elapsed > FPS)
 			{
-				//tick each client, updating their position and sprite position
-				std::cout << client.getPosition().first << " , " << client.getPosition().second << std::endl;
-				client.Tick();
+				//mutex.lock();
+				for (auto& client : tcp_clients)
+				{
+					//tick each client, updating their position and sprite position
+					//std::cout << client.getPosition().x << " , " << client.getPosition().y << std::endl;
+					client.Tick();
+				}
+				updatePositions(tcp_clients);
+				//mutex.unlock();
+				clock.restart();
 			}
-			updatePositions(tcp_clients);
-			mutex.unlock();
 		}
 	}
 }
@@ -247,8 +291,8 @@ void Server::updatePositions(TcpClients& tcp_clients)
 	packet << NetMsg::POSITIONS;
 	for (auto& client : tcp_clients)
 	{
-		packet << client.getPosition().first << client.getPosition().second;
-		//std::cout << client.getPosition().first << " , " << client.getPosition().second << std::endl;
+		packet << client.getPosition().x << client.getPosition().y;
+		std::cout << "client: " << client.getClientID() << " position: " << client.getPosition().x << " , " << client.getPosition().y << std::endl;
 	}
 	for (auto& client : tcp_clients)
 	{

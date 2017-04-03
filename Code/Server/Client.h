@@ -24,7 +24,7 @@ public:
 	void setLatency(std::chrono::microseconds);
 	void setPosition(float x, float y);
 
-	std::pair<float, float>& getPosition();
+	sf::Vector2f& getPosition();
 	PlayerMove& getMoveDirection() { return data.move_dir; };
 	const auto& getPingTime() const { return timestamp; };
 	const auto& getLatency() const { return latency; };
@@ -44,6 +44,7 @@ private:
 	std::chrono::steady_clock::time_point timestamp = std::chrono::steady_clock::now();
 	std::chrono::microseconds latency = 100us;
 	std::unique_ptr<sf::TcpSocket> socket = nullptr;
-	float move_speed = 1.0f;
+	float move_speed = (float)WindowSize::width / (float)WindowSize::grid_size;
+	float sprite_bound_max = float(WindowSize::width / WindowSize::grid_size);
 	PlayerData data;
 };

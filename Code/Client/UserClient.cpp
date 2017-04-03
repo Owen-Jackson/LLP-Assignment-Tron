@@ -4,6 +4,7 @@
 #include <future>
 #include <iostream>
 #include <string>
+#include <random>
 
 using TcpClient = sf::TcpSocket;
 using TcpClientPtr = std::unique_ptr<TcpClient>;
@@ -20,6 +21,18 @@ sf::Packet& operator >> (sf::Packet& packet, InitData& controls)
 	return packet;
 }
 
+sf::Packet& operator >> (sf::Packet& packet, sf::Vector2f& pos)
+{
+	packet >> pos.x >> pos.y;
+	return packet;
+}
+
+sf::Packet& operator >> (sf::Packet& packet, sf::Color& colour)
+{
+	packet >> colour.r >> colour.g >> colour.b >> colour.a;
+	return packet;
+}
+
 sf::Packet& operator << (sf::Packet& packet, const PlayerMove& dir)
 {
 	packet << static_cast<sf::Uint32>(dir);
@@ -28,13 +41,12 @@ sf::Packet& operator << (sf::Packet& packet, const PlayerMove& dir)
 
 UserClient::UserClient()
 {
-	my_player.sprite = std::make_unique<sf::RectangleShape>();
-	my_player.sprite->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
-	my_player.sprite->setFillColor(sf::Color::White);
-	my_player.move_dir = PlayerMove::NONE;
-	my_player.xPos = 0;
-	my_player.yPos = 0;
-	players.push_back(std::move(my_player));
+	//my_player.sprite = std::make_unique<sf::RectangleShape>();
+	//my_player.sprite->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
+	//my_player.sprite->setFillColor(sf::Color::White);
+	//sf::RectangleShape my_sprite;
+	//my_sprite.setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
+	//player_sprites.push_back(my_sprite);
 }
 
 bool UserClient::connect(TcpClient& client)
@@ -43,12 +55,10 @@ bool UserClient::connect(TcpClient& client)
 	auto status = client.connect(SERVER_IP, SERVER_TCP_PORT);
 	if (status != sf::Socket::Done)
 	{
-		players[0].sprite->setFillColor(sf::Color::Blue);
 		return false;
 	}
 
 	//successful connect
-	players[0].sprite->setFillColor(sf::Color::Red);
 	client.setBlocking(false);
 
 	return true;
@@ -57,33 +67,31 @@ bool UserClient::connect(TcpClient& client)
 void UserClient::input(TcpClient& client)
 {
 	sf::Keyboard keyboard;
+	sf::Packet dir_pack;
 	while (true)
 	{
 		//Check for keyboard input to move the player
 		if (keyboard.isKeyPressed((Key)controls.up))
 		{
-			sf::Packet packet;
-			packet << NetMsg::MOVEDIR << PlayerMove::UP;
-			client.send(packet);
+			dir_pack << NetMsg::MOVEDIR << PlayerMove::UP;
+			client.send(dir_pack);
 		}
 		else if (keyboard.isKeyPressed((Key)controls.left))
 		{
-			sf::Packet packet;
-			packet << NetMsg::MOVEDIR << LEFT;
-			client.send(packet);
+			dir_pack << NetMsg::MOVEDIR << LEFT;
+			client.send(dir_pack);
 		}
 		else if (keyboard.isKeyPressed((Key)controls.down))
 		{
-			sf::Packet packet;
-			packet << NetMsg::MOVEDIR << DOWN;
-			client.send(packet);
+			dir_pack << NetMsg::MOVEDIR << DOWN;
+			client.send(dir_pack);
 		}
 		else if (keyboard.isKeyPressed((Key)controls.right))
 		{
-			sf::Packet packet;
-			packet << NetMsg::MOVEDIR << RIGHT;
-			client.send(packet);
+			dir_pack << NetMsg::MOVEDIR << RIGHT;
+			client.send(dir_pack);
 		}
+		dir_pack.clear();
 	}
 }
 
@@ -118,10 +126,34 @@ void UserClient::client()
 				}
 				else if (msg == NetMsg::INIT)
 				{
-					players[0].sprite->setFillColor(sf::Color::Yellow);
+
+					std::unique_ptr<sf::RectangleShape> my_sprite = std::make_unique<sf::RectangleShape>();
+					packet >> my_data.client_id;
+					if (my_data.client_id > 0)
+					{
+						createPlayers();
+					}
+					//receive controls
 					InitData scheme;
-					packet >> scheme;
-					setControls(scheme);
+					if (packet >> scheme)
+					{
+						setControls(scheme);
+					}
+					//setControls(scheme);
+
+					my_sprite->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
+
+					//receive sprite colour
+					sf::Color my_colour;
+					packet >> my_colour;
+					my_sprite->setFillColor(my_colour);
+
+					//receive start position
+					sf::Vector2f start_pos;
+					packet >> start_pos;
+					my_sprite->setPosition(start_pos);
+
+					player_sprites.push_back(std::move(my_sprite));
 				}
 				else if (msg == NetMsg::PING)
 				{
@@ -131,11 +163,16 @@ void UserClient::client()
 				}
 				else if (msg == NetMsg::POSITIONS)
 				{
-					//mutex.lock();
-					packet >> players[0].xPos >> players[0].yPos;
-					players[0].sprite->setPosition(players[0].xPos, players[0].yPos);
-					//opponent->setPosition(opp_pos);
-					//mutex.unlock();
+					sf::Vector2f pos;
+					for (int i = 0; i < player_sprites.size(); i++)
+					{
+						packet >> pos;
+						player_sprites[i]->setPosition(pos);
+					}
+				}
+				else if (msg == NetMsg::NEWPLAYER)
+				{
+					addOpponent(packet);
 				}
 			}
 		} while (status != sf::Socket::Disconnected);
@@ -143,11 +180,29 @@ void UserClient::client()
 
 	return input(socket);
 }
-//
-//const void UserClient::addOpponent(std::unique_ptr<Player> opponent)
-//{
-//	enemies.push_back(std::move(opponent));
-//}
+
+void UserClient::addOpponent(sf::Packet& packet)
+{
+	int new_id;
+	packet >> new_id;
+	std::unique_ptr<sf::RectangleShape> new_player = std::make_unique<sf::RectangleShape>();
+	new_player->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
+	new_player->setFillColor(start_data.colours[new_id % 4]);
+	new_player->setPosition(start_data.starting_positions[new_id % 4]);
+	player_sprites.push_back(std::move(new_player));
+}
+
+void UserClient::createPlayers()
+{
+	for (int i = 0; i < my_data.client_id; i++)
+	{
+		std::unique_ptr<sf::RectangleShape> sprite = std::make_unique<sf::RectangleShape>();
+		sprite->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
+		sprite->setFillColor(start_data.colours[i % 4]);
+		sprite->setPosition(start_data.starting_positions[i % 4]);
+		player_sprites.push_back(std::move(sprite));
+	}
+}
 
 void UserClient::setControls(InitData& new_controls)
 {
