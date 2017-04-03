@@ -1,5 +1,6 @@
-#include <SFML/Network.hpp>
+#include <SFML\Network.hpp>
 #include <SFML\Graphics.hpp>
+#include <Game\GridData.h>
 #include <memory>
 #include <vector>
 #include <chrono>
@@ -28,6 +29,6 @@ public:
 private:
 	sf::Uint32 player_number = 0;
 	StartData start_data;
-	std::vector<sf::Vector2f> gridPositions;
+	//std::vector<GridData> server_grid;
 	sf::Mutex mutex;
 };

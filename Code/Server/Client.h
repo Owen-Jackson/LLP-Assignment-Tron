@@ -1,5 +1,4 @@
-#pragma once
-#include <SFML/Network.hpp>
+#include <SFML\Network.hpp>
 #include <Game\SharedData.h>
 #include <memory>
 #include <utility>
@@ -23,6 +22,7 @@ public:
 	void setDirection(PlayerMove& new_dir) { data.move_dir = new_dir; };
 	void setLatency(std::chrono::microseconds);
 	void setPosition(float x, float y);
+	void setSpawn(float x, float y);
 
 	sf::Vector2f& getPosition();
 	PlayerMove& getMoveDirection() { return data.move_dir; };

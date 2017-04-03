@@ -11,7 +11,7 @@ struct WindowSize
 {
 	const static int width = 600;
 	const static int height = 600;
-	const static int grid_size = 32;	//used by server to create (grid_size x grid_size) sized grid and client when moving
+	const static int grid_size = 64;	//used by server to create (grid_size x grid_size) sized grid and client when moving
 };
 
 enum NetMsg : sf::Uint32
@@ -19,7 +19,7 @@ enum NetMsg : sf::Uint32
 	INVALID = 0,
 	CHAT = 1,
 	MOVEDIR = 2,
-	POSITIONS = 3,
+	GRID_STATE = 3,
 	INIT = 4,
 	PING = 5,
 	PONG = 6,
@@ -50,6 +50,7 @@ struct PlayerData
 	sf::Uint32 client_id;
 	float xPos;
 	float yPos;
+	sf::Vector2f spawn_pos;
 	PlayerMove move_dir;
 };
 

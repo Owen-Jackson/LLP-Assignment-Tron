@@ -1,5 +1,4 @@
 #include "Client.h"
-#include <Game/SharedData.h>
 #include <iostream>
 
 Client::Client(sf::TcpSocket* _socket) : socket(_socket)
@@ -12,6 +11,7 @@ Client::Client(Client &&rhs)
 	this->id = rhs.id;
 	this->latency = rhs.latency;
 	this->socket = std::move(rhs.socket);
+	this->data = rhs.data;
 }
 
 Client& Client::operator=(Client&& rhs)
@@ -19,6 +19,7 @@ Client& Client::operator=(Client&& rhs)
 	this->id = rhs.id;
 	this->latency = rhs.latency;
 	this->socket = std::move(rhs.socket);
+	this->data = rhs.data;
 	return *this;
 }
 
@@ -31,6 +32,12 @@ void Client::setPosition(float x, float y)
 {
 	data.xPos = x;
 	data.yPos = y;
+}
+
+void Client::setSpawn(float x, float y)
+{
+	data.spawn_pos.x = x;
+	data.spawn_pos.y = y;
 }
 
 sf::TcpSocket& Client::getSocket()
@@ -92,20 +99,10 @@ void Client::Tick()
 
 void Client::checkCollisions()
 {
-	if (data.xPos + sprite_bound_max > WindowSize::width)
+	if (data.xPos + sprite_bound_max > WindowSize::width || data.xPos < 0
+		|| data.yPos + sprite_bound_max > WindowSize::height || data.yPos < 0)
 	{
-		data.xPos = WindowSize::width - sprite_bound_max;
-	}
-	if (data.xPos < 0)
-	{
-		data.xPos = 0;
-	}
-	if (data.yPos + sprite_bound_max > WindowSize::height)
-	{
-		data.yPos = WindowSize::height - sprite_bound_max;
-	}
-	if (data.yPos < 0)
-	{
-		data.yPos = 0;
+		data.xPos = data.spawn_pos.x;
+		data.yPos = data.spawn_pos.y;
 	}
 }

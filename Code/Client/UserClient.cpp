@@ -1,5 +1,4 @@
 #include "UserClient.h"
-#include <Game/SharedData.h>
 
 #include <future>
 #include <iostream>
@@ -67,30 +66,48 @@ bool UserClient::connect(TcpClient& client)
 void UserClient::input(TcpClient& client)
 {
 	sf::Keyboard keyboard;
+	PlayerMove last_dir = NONE;
 	sf::Packet dir_pack;
 	while (true)
 	{
 		//Check for keyboard input to move the player
 		if (keyboard.isKeyPressed((Key)controls.up))
 		{
-			dir_pack << NetMsg::MOVEDIR << PlayerMove::UP;
-			client.send(dir_pack);
+			my_data.move_dir = UP;
+			if (my_data.move_dir != last_dir)
+			{
+				dir_pack << NetMsg::MOVEDIR << PlayerMove::UP;
+				client.send(dir_pack);
+			}
 		}
 		else if (keyboard.isKeyPressed((Key)controls.left))
 		{
-			dir_pack << NetMsg::MOVEDIR << LEFT;
-			client.send(dir_pack);
+			my_data.move_dir = LEFT;
+			if (my_data.move_dir != last_dir)
+			{
+				dir_pack << NetMsg::MOVEDIR << PlayerMove::LEFT;
+				client.send(dir_pack);
+			}
 		}
 		else if (keyboard.isKeyPressed((Key)controls.down))
 		{
-			dir_pack << NetMsg::MOVEDIR << DOWN;
-			client.send(dir_pack);
+			my_data.move_dir = DOWN;
+			if (my_data.move_dir != last_dir)
+			{
+				dir_pack << NetMsg::MOVEDIR << PlayerMove::DOWN;
+				client.send(dir_pack);
+			}
 		}
 		else if (keyboard.isKeyPressed((Key)controls.right))
 		{
-			dir_pack << NetMsg::MOVEDIR << RIGHT;
-			client.send(dir_pack);
+			my_data.move_dir = RIGHT;
+			if (my_data.move_dir != last_dir)
+			{
+				dir_pack << NetMsg::MOVEDIR << PlayerMove::RIGHT;
+				client.send(dir_pack);
+			}
 		}
+		last_dir = my_data.move_dir;
 		dir_pack.clear();
 	}
 }
@@ -161,7 +178,7 @@ void UserClient::client()
 					packet << NetMsg::PONG;
 					socket.send(packet);
 				}
-				else if (msg == NetMsg::POSITIONS)
+				else if (msg == NetMsg::GRID_STATE)
 				{
 					sf::Vector2f pos;
 					for (int i = 0; i < player_sprites.size(); i++)

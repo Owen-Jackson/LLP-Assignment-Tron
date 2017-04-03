@@ -1,5 +1,5 @@
 #include "Server.h"
-#include <Game/SharedData.h>
+#include <Game\SharedData.h>
 #include <iostream>
 #include <string>
 #include <algorithm>
@@ -28,21 +28,7 @@ sf::Packet& operator << (sf::Packet& packet, sf::Vector2f& pos)
 
 Server::Server()
 {
-	//Setup keyboard controls list
-	/*ControlKeys temp;
-	controls_set = { temp.player1, temp.player2, temp.player3, temp.player4 };*/
-
-	//Create grid positions
-	//std::cout << "generating grid positions" << std::endl;
-	//for (int i = 0; i < WindowSize::grid_size; i++)
-	//{
-	//	for (int j = 0; j < WindowSize::grid_size; j++)
-	//	{
-	//		sf::Vector2f position = sf::Vector2f(((float)WindowSize::width / WindowSize::grid_size) * j, ((float)WindowSize::height / WindowSize::grid_size) * i);
-	//		std::cout << position.x << " , " << position.y << std::endl;
-	//		gridPositions.push_back(position);
-	//	}
-	//}
+	;
 }
 
 bool Server::bindServerPort(sf::TcpListener& listener)
@@ -90,13 +76,14 @@ void Server::connect(sf::TcpListener& tcp_listener, sf::SocketSelector& selector
 
 		//add client to the current list
 		client.setPosition(start_data.starting_positions[player_number % 4].x, start_data.starting_positions[player_number % 4].y);
-		std::cout << "player " << client.getClientID() << " position pre move: " << client.getPosition().x << " , " << client.getPosition().y << std::endl;
+		client.setSpawn(start_data.starting_positions[player_number % 4].x, start_data.starting_positions[player_number % 4].y);
+		//std::cout << "player " << client.getClientID() << " position pre move: " << client.getPosition().x << " , " << client.getPosition().y << std::endl;
 		tcp_clients.push_back(std::move(client));
 		std::cout << "client " << client.getClientID() << " connected" << std::endl;
 
 		//set new client's position
-		tcp_clients[player_number].setPosition(start_data.starting_positions[player_number % 4].x, start_data.starting_positions[player_number % 4].y);
-		std::cout << "player " << tcp_clients[0].getClientID() << " position: " << tcp_clients[0].getPosition().x << " , " << tcp_clients[0].getPosition().y << std::endl;
+		//tcp_clients[player_number].setPosition(start_data.starting_positions[player_number % 4].x, start_data.starting_positions[player_number % 4].y);
+		//std::cout << "player " << tcp_clients[0].getClientID() << " position: " << tcp_clients[0].getPosition().x << " , " << tcp_clients[0].getPosition().y << std::endl;
 		//increment the player number
 		player_number++;
 		std::cout << "number of players: " << player_number << std::endl;
@@ -111,7 +98,6 @@ void Server::connect(sf::TcpListener& tcp_listener, sf::SocketSelector& selector
 			{
 				continue;
 			}
-			std::cout << "player " << iter.getClientID() <<" position: " << iter.getPosition().x << " , " << iter.getPosition().y << std::endl;
 			iter.getSocket().send(rival_appears);
 		}
 		mutex.unlock();
@@ -183,7 +169,7 @@ void Server::receiveMsg(TcpClients& tcp_clients, sf::SocketSelector& selector)
 				//cast direction to PlayerMove enum then store the value
 				PlayerMove direction = static_cast<PlayerMove>(new_dir);
 				iter->setDirection(direction);
-				//std::cout << "player " << iter->getClientID() << " moving: " << new_dir << std::endl;
+				std::cout << "player " << iter->getClientID() << " moving: " << new_dir << std::endl;
 			}
 			else if (msg == NetMsg::PONG)
 			{
@@ -269,15 +255,14 @@ void Server::runGame(TcpClients& tcp_clients)
 			elapsed = clock.getElapsedTime();
 			if (elapsed > FPS)
 			{
-				//mutex.lock();
+				mutex.lock();
 				for (auto& client : tcp_clients)
 				{
 					//tick each client, updating their position and sprite position
-					//std::cout << client.getPosition().x << " , " << client.getPosition().y << std::endl;
 					client.Tick();
 				}
 				updatePositions(tcp_clients);
-				//mutex.unlock();
+				mutex.unlock();
 				clock.restart();
 			}
 		}
@@ -288,11 +273,10 @@ void Server::runGame(TcpClients& tcp_clients)
 void Server::updatePositions(TcpClients& tcp_clients)
 {
 	sf::Packet packet;
-	packet << NetMsg::POSITIONS;
+	packet << NetMsg::GRID_STATE;
 	for (auto& client : tcp_clients)
 	{
 		packet << client.getPosition().x << client.getPosition().y;
-		std::cout << "client: " << client.getClientID() << " position: " << client.getPosition().x << " , " << client.getPosition().y << std::endl;
 	}
 	for (auto& client : tcp_clients)
 	{

@@ -2,6 +2,7 @@
 #include <SFML\Network.hpp>
 #include <SFML\Graphics.hpp>
 #include <Game\SharedData.h>
+#include <Game\GridData.h>
 #include <memory>
 #include <vector>
 
@@ -31,4 +32,5 @@ private:
 	StartData start_data;
 	std::vector<std::unique_ptr<sf::RectangleShape>> player_sprites;
 	sf::Mutex mutex;
+	//std::vector<GridData> grid;
 };
