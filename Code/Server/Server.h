@@ -1,6 +1,5 @@
 #include <SFML\Network.hpp>
 #include <SFML\Graphics.hpp>
-#include <Game\GridData.h>
 #include <memory>
 #include <vector>
 #include <chrono>
@@ -24,11 +23,13 @@ public:
 	void runMe();
 	void ping(TcpClients&);
 	void runGame(TcpClients&);
-	void updatePositions(TcpClients&);
+	void sendPositions(TcpClients&);
+	void refreshGrid(const int& client_id);
+	void updateGrid(TcpClients&);
 
 private:
-	sf::Uint32 player_number = 0;
+	sf::Uint8 player_number = 0;
 	StartData start_data;
-	//std::vector<GridData> server_grid;
+	std::vector<sf::Int32> grid;
 	sf::Mutex mutex;
 };

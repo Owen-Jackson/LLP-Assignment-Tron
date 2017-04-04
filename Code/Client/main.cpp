@@ -23,6 +23,7 @@ int main()
 	sf::Font font;
 	font.loadFromFile("../../Libs/Fonts/arial.ttf");
 
+	std::vector<sf::Color> colours = { sf::Color::Red, sf::Color::Green, sf::Color::Cyan, sf::Color::Yellow };
 	//create text
 	//*sf::Text text;
 	//std::string str;
@@ -34,6 +35,9 @@ int main()
 
 	//create client to connect to server
 	UserClient* user = new UserClient();
+
+	sf::RectangleShape grid_square;
+	grid_square.setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
 
 	//limit framerate
 	window.setFramerateLimit(30);
@@ -64,10 +68,28 @@ int main()
 		}
 
 		window.clear();
-		for (auto& player : user->getPlayerSprites())
+		/*for (auto& player : user->getPlayerSprites())
 		{
 			window.draw(*player);
+		}*/
+		//loop through the grid and draw a rectangle in each place that a player has been in
+		for (int i = 0; i < WindowSize::grid_size; i++)
+		{
+			for (int j = 0; j < WindowSize::grid_size; j++)
+			{
+				//START FROM HERE!!!!
+				if (user->getGrid()[(i * WindowSize::grid_size) + j] != -1)
+				{
+					grid_square.setPosition((i * ((float)WindowSize::width/WindowSize::grid_size)), (j *((float)WindowSize::height / WindowSize::grid_size)));
+					grid_square.setFillColor(colours[user->getGrid()[(WindowSize::grid_size * i) + j] % 4]);
+					window.draw(grid_square);
+				}
+			}
 		}
+		//grid_square.setFillColor(sf::Color::Blue);
+		//window.draw(grid_square);
+
+
 		//window.draw(*(user->getPlayerSprite()));
 		//window.draw(shape);
 		//window.draw(text);

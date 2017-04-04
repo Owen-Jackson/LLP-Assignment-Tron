@@ -85,7 +85,6 @@
     <ClCompile Include="..\..\Code\Game\TronGame.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Code\Game\GridData.h" />
     <ClInclude Include="..\..\Code\Game\SharedData.h" />
     <ClInclude Include="..\..\Code\Game\TronGame.h" />
   </ItemGroup>

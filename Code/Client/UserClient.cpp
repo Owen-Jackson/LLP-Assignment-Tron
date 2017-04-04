@@ -14,13 +14,13 @@ const int SERVER_TCP_PORT = 53000;
 const sf::IpAddress SERVER_IP = "127.0.0.1";
 int CURRENT_PORT = SERVER_TCP_PORT;
 
-sf::Packet& operator >> (sf::Packet& packet, InitData& controls)
+sf::Packet& operator >> (sf::Packet& packet, Controls& controls)
 {
 	packet >> controls.up >> controls.left >> controls.down >> controls.right;
 	return packet;
 }
 
-sf::Packet& operator >> (sf::Packet& packet, sf::Vector2f& pos)
+sf::Packet& operator >> (sf::Packet& packet, sf::Vector2i& pos)
 {
 	packet >> pos.x >> pos.y;
 	return packet;
@@ -46,6 +46,14 @@ UserClient::UserClient()
 	//sf::RectangleShape my_sprite;
 	//my_sprite.setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
 	//player_sprites.push_back(my_sprite);
+	//setup the grid to be unused values
+	for (int i = 0; i < WindowSize::grid_size; i++)
+	{
+		for (int j = 0; j < WindowSize::grid_size; j++)
+		{
+			grid.push_back(-1);
+		}
+	}
 }
 
 bool UserClient::connect(TcpClient& client)
@@ -71,7 +79,7 @@ void UserClient::input(TcpClient& client)
 	while (true)
 	{
 		//Check for keyboard input to move the player
-		if (keyboard.isKeyPressed((Key)controls.up))
+		if (keyboard.isKeyPressed((Key)my_data.controls.up) && last_dir != DOWN)
 		{
 			my_data.move_dir = UP;
 			if (my_data.move_dir != last_dir)
@@ -80,7 +88,7 @@ void UserClient::input(TcpClient& client)
 				client.send(dir_pack);
 			}
 		}
-		else if (keyboard.isKeyPressed((Key)controls.left))
+		else if (keyboard.isKeyPressed((Key)my_data.controls.left) && last_dir != RIGHT)
 		{
 			my_data.move_dir = LEFT;
 			if (my_data.move_dir != last_dir)
@@ -89,7 +97,7 @@ void UserClient::input(TcpClient& client)
 				client.send(dir_pack);
 			}
 		}
-		else if (keyboard.isKeyPressed((Key)controls.down))
+		else if (keyboard.isKeyPressed((Key)my_data.controls.down) && last_dir != UP)
 		{
 			my_data.move_dir = DOWN;
 			if (my_data.move_dir != last_dir)
@@ -98,7 +106,7 @@ void UserClient::input(TcpClient& client)
 				client.send(dir_pack);
 			}
 		}
-		else if (keyboard.isKeyPressed((Key)controls.right))
+		else if (keyboard.isKeyPressed((Key)my_data.controls.right) && last_dir != LEFT)
 		{
 			my_data.move_dir = RIGHT;
 			if (my_data.move_dir != last_dir)
@@ -146,31 +154,11 @@ void UserClient::client()
 
 					std::unique_ptr<sf::RectangleShape> my_sprite = std::make_unique<sf::RectangleShape>();
 					packet >> my_data.client_id;
-					if (my_data.client_id > 0)
-					{
-						createPlayers();
-					}
-					//receive controls
-					InitData scheme;
+					Controls scheme;
 					if (packet >> scheme)
 					{
 						setControls(scheme);
 					}
-					//setControls(scheme);
-
-					my_sprite->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
-
-					//receive sprite colour
-					sf::Color my_colour;
-					packet >> my_colour;
-					my_sprite->setFillColor(my_colour);
-
-					//receive start position
-					sf::Vector2f start_pos;
-					packet >> start_pos;
-					my_sprite->setPosition(start_pos);
-
-					player_sprites.push_back(std::move(my_sprite));
 				}
 				else if (msg == NetMsg::PING)
 				{
@@ -180,16 +168,16 @@ void UserClient::client()
 				}
 				else if (msg == NetMsg::GRID_STATE)
 				{
-					sf::Vector2f pos;
-					for (int i = 0; i < player_sprites.size(); i++)
+					mutex.lock();
+					sf::Uint32 size;
+					packet >> size;
+					for (int i = 0; i < size; i++)
 					{
-						packet >> pos;
-						player_sprites[i]->setPosition(pos);
+						int index;
+						packet >> index;
+						grid[i] = index;
 					}
-				}
-				else if (msg == NetMsg::NEWPLAYER)
-				{
-					addOpponent(packet);
+					mutex.unlock();
 				}
 			}
 		} while (status != sf::Socket::Disconnected);
@@ -198,33 +186,10 @@ void UserClient::client()
 	return input(socket);
 }
 
-void UserClient::addOpponent(sf::Packet& packet)
+void UserClient::setControls(Controls& new_controls)
 {
-	int new_id;
-	packet >> new_id;
-	std::unique_ptr<sf::RectangleShape> new_player = std::make_unique<sf::RectangleShape>();
-	new_player->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
-	new_player->setFillColor(start_data.colours[new_id % 4]);
-	new_player->setPosition(start_data.starting_positions[new_id % 4]);
-	player_sprites.push_back(std::move(new_player));
-}
-
-void UserClient::createPlayers()
-{
-	for (int i = 0; i < my_data.client_id; i++)
-	{
-		std::unique_ptr<sf::RectangleShape> sprite = std::make_unique<sf::RectangleShape>();
-		sprite->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
-		sprite->setFillColor(start_data.colours[i % 4]);
-		sprite->setPosition(start_data.starting_positions[i % 4]);
-		player_sprites.push_back(std::move(sprite));
-	}
-}
-
-void UserClient::setControls(InitData& new_controls)
-{
-	controls.up = new_controls.up;
-	controls.left = new_controls.left;
-	controls.down = new_controls.down;
-	controls.right = new_controls.right;
+	my_data.controls.up = new_controls.up;
+	my_data.controls.left = new_controls.left;
+	my_data.controls.down = new_controls.down;
+	my_data.controls.right = new_controls.right;
 }

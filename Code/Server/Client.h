@@ -21,10 +21,11 @@ public:
 
 	void setDirection(PlayerMove& new_dir) { data.move_dir = new_dir; };
 	void setLatency(std::chrono::microseconds);
-	void setPosition(float x, float y);
-	void setSpawn(float x, float y);
+	void setIndexPosition(sf::Vector2i& index) { data.grid_index = index; };
+	void setSpawn(sf::Vector2i& spawn) { data.spawn_pos = spawn; };
 
-	sf::Vector2f& getPosition();
+	sf::Vector2i& getSpawnPoint() { return data.spawn_pos; };
+	sf::Vector2i& getIndexPosition() { return data.grid_index; };
 	PlayerMove& getMoveDirection() { return data.move_dir; };
 	const auto& getPingTime() const { return timestamp; };
 	const auto& getLatency() const { return latency; };
@@ -34,8 +35,8 @@ public:
 	void pong();
 
 	//Game loop updates
-	void Tick();
-	void checkCollisions();
+	bool Tick(std::vector<sf::Int32>& grid);
+	bool checkCollisions(std::vector<sf::Int32>& grid);
 
 private:
 	static unsigned int next_id;
@@ -44,7 +45,5 @@ private:
 	std::chrono::steady_clock::time_point timestamp = std::chrono::steady_clock::now();
 	std::chrono::microseconds latency = 100us;
 	std::unique_ptr<sf::TcpSocket> socket = nullptr;
-	float move_speed = (float)WindowSize::width / (float)WindowSize::grid_size;
-	float sprite_bound_max = float(WindowSize::width / WindowSize::grid_size);
 	PlayerData data;
 };

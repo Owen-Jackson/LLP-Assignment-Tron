@@ -11,7 +11,11 @@ struct WindowSize
 {
 	const static int width = 600;
 	const static int height = 600;
-	const static int grid_size = 64;	//used by server to create (grid_size x grid_size) sized grid and client when moving
+
+	//used by server and client to create (grid_size x grid_size) sized grid
+	//Note: grid_size must be even - odd grid_sizes are not accounted for and players can go offscreen
+	const static int grid_size = 64;
+	const static int grid_points = grid_size * grid_size;
 };
 
 enum NetMsg : sf::Uint32
@@ -23,7 +27,6 @@ enum NetMsg : sf::Uint32
 	INIT = 4,
 	PING = 5,
 	PONG = 6,
-	NEWPLAYER = 7,
 };
 
 enum PlayerMove : sf::Uint32
@@ -35,7 +38,7 @@ enum PlayerMove : sf::Uint32
 	DOWN = 4,
 };
 
-struct InitData
+struct Controls
 {
 	//Control scheme for the client
 	int up;
@@ -47,11 +50,11 @@ struct InitData
 //create struct to store player data in
 struct PlayerData
 {
-	sf::Uint32 client_id;
-	float xPos;
-	float yPos;
-	sf::Vector2f spawn_pos;
+	sf::Uint8 client_id;
+	sf::Vector2i spawn_pos;
+	sf::Vector2i grid_index;
 	PlayerMove move_dir;
+	Controls controls;
 };
 
 struct StartData
@@ -62,8 +65,12 @@ struct StartData
 	std::vector<Key> down = { Key::S, Key::Down, Key::H, Key::SemiColon };
 	std::vector<Key> right = { Key::D, Key::Right, Key::J , Key::Quote };
 	std::vector<sf::Color> colours = { sf::Color::Red, sf::Color::Green, sf::Color::Cyan, sf::Color::Yellow };
-	std::vector<sf::Vector2f> starting_positions = { sf::Vector2f(0.0f, float(WindowSize::height / 2)),
-													 sf::Vector2f(float(WindowSize::width - (WindowSize::width / WindowSize::grid_size)), float(WindowSize::height / 2)),
-													 sf::Vector2f(float(WindowSize::width / 2), 0),
-													 sf::Vector2f(float(WindowSize::width / 2), float(WindowSize::height - (WindowSize::height / WindowSize::grid_size))) };
+
+	//Grid indices for where each player will begin 
+	std::vector<sf::Vector2i> starting_positions = { 
+		sf::Vector2i(0, WindowSize::grid_size / 2), 
+		sf::Vector2i(WindowSize::grid_size - 1, WindowSize::grid_size / 2),
+		sf::Vector2i(WindowSize::grid_size / 2, 0), 
+		sf::Vector2i(WindowSize::grid_size / 2, WindowSize::grid_size - 1) 
+	};
 };

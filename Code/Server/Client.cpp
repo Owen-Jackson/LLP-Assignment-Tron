@@ -28,27 +28,9 @@ bool Client::operator==(const Client& rhs)
 	return id == rhs.id;
 }
 
-void Client::setPosition(float x, float y)
-{
-	data.xPos = x;
-	data.yPos = y;
-}
-
-void Client::setSpawn(float x, float y)
-{
-	data.spawn_pos.x = x;
-	data.spawn_pos.y = y;
-}
-
 sf::TcpSocket& Client::getSocket()
 {
 	return *socket;
-}
-
-sf::Vector2f& Client::getPosition()
-{
-	sf::Vector2f pos = sf::Vector2f(data.xPos, data.yPos);
-	return pos;
 }
 
 void Client::setLatency(std::chrono::microseconds delay)
@@ -75,34 +57,48 @@ void Client::pong()
 	latency /= 2;
 }
 
-void Client::Tick()
+bool Client::Tick(std::vector<sf::Int32>& grid)
 {
 	switch (data.move_dir)
 	{
 	case PlayerMove::LEFT:
-		data.xPos -= move_speed;
+		if (data.grid_index.x % WindowSize::grid_size == 0 || grid[(data.grid_index.y * WindowSize::grid_size) + data.grid_index.x] != -1)
+		{
+			return false;
+		}
+		data.grid_index.x--;
 		break;
 	case PlayerMove::RIGHT:
-		data.xPos += move_speed;
+		if ((data.grid_index.x + 1) % WindowSize::grid_size != 0)
+		{
+			data.grid_index.x++;
+		}
 		break;
 	case PlayerMove::UP:
-		data.yPos -= move_speed;
+		if (data.grid_index.y - 1 >= 0)
+		{
+			data.grid_index.y--;
+		}
 		break;
 	case PlayerMove::DOWN:
-		data.yPos += move_speed;
+		if (data.grid_index.y + 1 < WindowSize::grid_size)
+		{
+			data.grid_index.y++;
+		}
 		break;
 	default:
 		;
 	}
-	checkCollisions();
+	return true;
+	//return checkCollisions(grid);
 }
 
-void Client::checkCollisions()
+bool Client::checkCollisions(std::vector<sf::Int32>& grid)
 {
-	if (data.xPos + sprite_bound_max > WindowSize::width || data.xPos < 0
-		|| data.yPos + sprite_bound_max > WindowSize::height || data.yPos < 0)
+	if (grid[(data.grid_index.y * WindowSize::grid_size) + data.grid_index.x] != -1)
 	{
-		data.xPos = data.spawn_pos.x;
-		data.yPos = data.spawn_pos.y;
+		data.grid_index = data.spawn_pos;
+		return false;
 	}
+	return true;
 }

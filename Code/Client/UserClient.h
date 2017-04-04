@@ -2,7 +2,6 @@
 #include <SFML\Network.hpp>
 #include <SFML\Graphics.hpp>
 #include <Game\SharedData.h>
-#include <Game\GridData.h>
 #include <memory>
 #include <vector>
 
@@ -19,18 +18,14 @@ public:
 	bool connect(TcpClient&);
 	void input(TcpClient&);
 	void client();
-	void addOpponent(sf::Packet& packet);
 
+	std::vector<sf::Int32>& getGrid() { return grid; };
 
-	void createPlayers();
-	void setControls(InitData&);
-	std::vector<std::unique_ptr<sf::RectangleShape>>& getPlayerSprites() { return player_sprites; };
+	void setControls(Controls&);
 
 private:
-	InitData controls;
 	PlayerData my_data;
 	StartData start_data;
-	std::vector<std::unique_ptr<sf::RectangleShape>> player_sprites;
 	sf::Mutex mutex;
-	//std::vector<GridData> grid;
+	std::vector<sf::Int32> grid;
 };
