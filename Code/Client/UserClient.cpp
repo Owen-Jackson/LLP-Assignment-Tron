@@ -40,12 +40,9 @@ sf::Packet& operator << (sf::Packet& packet, const PlayerMove& dir)
 
 UserClient::UserClient()
 {
-	//my_player.sprite = std::make_unique<sf::RectangleShape>();
-	//my_player.sprite->setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
-	//my_player.sprite->setFillColor(sf::Color::White);
-	//sf::RectangleShape my_sprite;
-	//my_sprite.setSize(sf::Vector2f((float)WindowSize::width / WindowSize::grid_size, (float)WindowSize::height / WindowSize::grid_size));
-	//player_sprites.push_back(my_sprite);
+	//set to be alive
+	my_data.is_alive = true;
+
 	//setup the grid to be unused values
 	for (int i = 0; i < WindowSize::grid_size; i++)
 	{
@@ -74,7 +71,7 @@ bool UserClient::connect(TcpClient& client)
 void UserClient::input(TcpClient& client)
 {
 	sf::Keyboard keyboard;
-	PlayerMove last_dir = NONE;
+	PlayerMove last_dir = my_data.move_dir;
 	sf::Packet dir_pack;
 	while (true)
 	{
@@ -159,6 +156,11 @@ void UserClient::client()
 					{
 						setControls(scheme);
 					}
+					sf::Uint32 move;
+					packet >> move;
+					my_data.move_dir = (PlayerMove)move;
+					my_data.start_dir = (PlayerMove)move;
+
 				}
 				else if (msg == NetMsg::PING)
 				{
@@ -178,6 +180,10 @@ void UserClient::client()
 						grid[i] = index;
 					}
 					mutex.unlock();
+				}
+				else if (msg == NetMsg::RESET)
+				{
+					my_data.move_dir = my_data.start_dir;
 				}
 			}
 		} while (status != sf::Socket::Disconnected);

@@ -33,9 +33,21 @@ sf::TcpSocket& Client::getSocket()
 	return *socket;
 }
 
+void Client::setStartDirection(PlayerMove& spawn_dir)
+{
+	data.start_dir = spawn_dir;
+	data.move_dir = spawn_dir;
+}
+
 void Client::setLatency(std::chrono::microseconds delay)
 {
 	latency = delay;
+}
+
+void Client::setSpawn(sf::Vector2i& spawn)
+{
+	data.spawn_pos = spawn;
+	data.grid_index = spawn;
 }
 
 void Client::ping()
@@ -57,16 +69,15 @@ void Client::pong()
 	latency /= 2;
 }
 
-bool Client::Tick(std::vector<sf::Int32>& grid)
+void Client::tick()
 {
 	switch (data.move_dir)
 	{
 	case PlayerMove::LEFT:
-		if (data.grid_index.x % WindowSize::grid_size == 0 || grid[(data.grid_index.y * WindowSize::grid_size) + data.grid_index.x] != -1)
+		if (data.grid_index.x % WindowSize::grid_size != 0)
 		{
-			return false;
+			data.grid_index.x--;
 		}
-		data.grid_index.x--;
 		break;
 	case PlayerMove::RIGHT:
 		if ((data.grid_index.x + 1) % WindowSize::grid_size != 0)
@@ -89,16 +100,10 @@ bool Client::Tick(std::vector<sf::Int32>& grid)
 	default:
 		;
 	}
-	return true;
-	//return checkCollisions(grid);
 }
 
-bool Client::checkCollisions(std::vector<sf::Int32>& grid)
+void Client::respawn()
 {
-	if (grid[(data.grid_index.y * WindowSize::grid_size) + data.grid_index.x] != -1)
-	{
-		data.grid_index = data.spawn_pos;
-		return false;
-	}
-	return true;
+	data.grid_index = data.spawn_pos;
+	data.move_dir = data.start_dir;
 }

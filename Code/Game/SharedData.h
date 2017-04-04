@@ -27,11 +27,12 @@ enum NetMsg : sf::Uint32
 	INIT = 4,
 	PING = 5,
 	PONG = 6,
+	DIED = 7,
+	RESET = 8,
 };
 
 enum PlayerMove : sf::Uint32
 {
-	NONE = 0,
 	LEFT = 1,
 	RIGHT = 2,
 	UP = 3,
@@ -54,7 +55,9 @@ struct PlayerData
 	sf::Vector2i spawn_pos;
 	sf::Vector2i grid_index;
 	PlayerMove move_dir;
+	PlayerMove start_dir;
 	Controls controls;
+	bool is_alive;
 };
 
 struct StartData
@@ -65,6 +68,7 @@ struct StartData
 	std::vector<Key> down = { Key::S, Key::Down, Key::H, Key::SemiColon };
 	std::vector<Key> right = { Key::D, Key::Right, Key::J , Key::Quote };
 	std::vector<sf::Color> colours = { sf::Color::Red, sf::Color::Green, sf::Color::Cyan, sf::Color::Yellow };
+	std::vector<PlayerMove> start_dir = { RIGHT, LEFT, DOWN, UP };
 
 	//Grid indices for where each player will begin 
 	std::vector<sf::Vector2i> starting_positions = { 

@@ -3,6 +3,7 @@
 
 #include <Server/stdafx.h>
 #include <iostream>
+#include <future>
 #include "Server.h"
 
 unsigned int Client::next_id = 0;

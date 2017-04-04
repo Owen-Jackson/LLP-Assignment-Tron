@@ -7,6 +7,7 @@
 #include <random>
 
 using Key = sf::Keyboard::Key;
+sf::Mutex mtx;
 
 void runThread(UserClient* client)
 {
@@ -68,16 +69,12 @@ int main()
 		}
 
 		window.clear();
-		/*for (auto& player : user->getPlayerSprites())
-		{
-			window.draw(*player);
-		}*/
 		//loop through the grid and draw a rectangle in each place that a player has been in
+		mtx.lock();
 		for (int i = 0; i < WindowSize::grid_size; i++)
 		{
 			for (int j = 0; j < WindowSize::grid_size; j++)
 			{
-				//START FROM HERE!!!!
 				if (user->getGrid()[(i * WindowSize::grid_size) + j] != -1)
 				{
 					grid_square.setPosition((i * ((float)WindowSize::width/WindowSize::grid_size)), (j *((float)WindowSize::height / WindowSize::grid_size)));
@@ -86,6 +83,7 @@ int main()
 				}
 			}
 		}
+		mtx.unlock();
 		//grid_square.setFillColor(sf::Color::Blue);
 		//window.draw(grid_square);
 

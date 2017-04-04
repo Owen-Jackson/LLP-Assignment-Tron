@@ -24,7 +24,7 @@ public:
 	void ping(TcpClients&);
 	void runGame(TcpClients&);
 	void sendPositions(TcpClients&);
-	void refreshGrid(const int& client_id);
+	void refreshGrid(const int& client_id, TcpClients&);
 	void updateGrid(TcpClients&);
 
 private:

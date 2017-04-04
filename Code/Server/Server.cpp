@@ -37,6 +37,12 @@ sf::Packet& operator << (sf::Packet& packet, std::vector<sf::Int32>& grid)
 	return packet;
 }
 
+sf::Packet& operator << (sf::Packet& packet, const PlayerMove& dir)
+{
+	packet << static_cast<sf::Uint32>(dir);
+	return packet;
+}
+
 Server::Server()
 {
 	//setup the grid to be unused values
@@ -84,11 +90,15 @@ void Server::connect(sf::TcpListener& tcp_listener, sf::SocketSelector& selector
 		init_pack << start_data.up[player_number % 4] << start_data.left[player_number % 4] << start_data.down[player_number % 4] << start_data.right[player_number % 4];
 		//std::cout << start_data.up[player_number % 4] << start_data.left[player_number % 4] << start_data.down[player_number % 4] << start_data.right[player_number % 4] << std::endl;
 
+		//add start direction
+		init_pack << start_data.start_dir[player_number % 4];
+		client.setStartDirection(start_data.start_dir[player_number % 4]);
+
 		//send pack to new client
 		client.getSocket().send(init_pack);
 
-		//add client to the current list
-		client.setIndexPosition(start_data.starting_positions[player_number % 4]);
+		//set client's initial position and respawn point
+		client.setSpawn(start_data.starting_positions[player_number % 4]);
 
 		//add client to the client list
 		tcp_clients.push_back(std::move(client));
@@ -159,14 +169,15 @@ void Server::receiveMsg(TcpClients& tcp_clients, sf::SocketSelector& selector)
 			}
 			else if (msg == NetMsg::MOVEDIR)
 			{
-				//std::cout << "received player position" << std::endl;
 				//get move direction from client as int
+				//mutex.lock();
 				sf::Uint32 new_dir;
 				packet >> new_dir;
 				//cast direction to PlayerMove enum then store the value
 				PlayerMove direction = static_cast<PlayerMove>(new_dir);
 				iter->setDirection(direction);
 				std::cout << "player " << iter->getClientID() << " moving: " << new_dir << std::endl;
+				//mutex.unlock();
 			}
 			else if (msg == NetMsg::PONG)
 			{
@@ -182,14 +193,12 @@ void Server::listen(sf::TcpListener& tcp_listener, sf::SocketSelector& selector,
 {
 	while (true)
 	{
-		if (selector.wait(sf::milliseconds(250)))
+		if (selector.wait(sf::seconds(5)))
 		{
 			//this is a new conection request
 			if (selector.isReady(tcp_listener))
 			{
-				mutex.lock();
 				connect(tcp_listener, selector, tcp_clients);
-				mutex.unlock();
 			}
 
 			//this is a message being receieved
@@ -217,8 +226,11 @@ void Server::runMe()
 	selector.add(tcp_listener);
 
 	TcpClients tcp_clients;
-	auto handle = std::async(std::launch::async, [&]
-	{runGame(tcp_clients); });
+	auto handle1 = std::async(std::launch::async, [&]
+	{
+		runGame(tcp_clients); 
+	});
+
 	return listen(tcp_listener, selector, tcp_clients);
 }
 
@@ -244,9 +256,6 @@ void Server::runGame(TcpClients& tcp_clients)
 	sf::Clock clock;
 	sf::Time elapsed;
 	sf::Time FPS = sf::milliseconds(1000/30);
-	/*std::thread grid_thread(&Server::updateGrid, this);
-	grid_thread.detach();*/
-
 	while (true)
 	{
 		while (tcp_clients.size() > 0)
@@ -255,21 +264,22 @@ void Server::runGame(TcpClients& tcp_clients)
 			elapsed = clock.getElapsedTime();
 			if (elapsed > FPS)
 			{
-				mutex.lock();
+				updateGrid(tcp_clients);
 				for (auto& client : tcp_clients)
 				{
 					//tick each client, updating their position and sprite position
-					//std::cout << "client index: " << client.getIndexPosition().x << " , " << client.getIndexPosition().y << std::endl;
-					if (!client.Tick(grid))
+					client.tick();
+					if (grid[(client.getIndexPosition().x * WindowSize::grid_size) + client.getIndexPosition().y] != -1)
 					{
-						std::cout << "i am dead" << std::endl;
-						refreshGrid(client.getClientID());
-						std::cout << "grid refreshed" << std::endl;
+						std::cout << "client: " << client.getClientID() << " has died at:" << client.getIndexPosition().x << " , " << client.getIndexPosition().y << std::endl;
+						std::cout << "grid index of death: " << grid[(client.getIndexPosition().x * WindowSize::grid_size) + client.getIndexPosition().y] << std::endl;
+						refreshGrid(client.getClientID(), tcp_clients);
+						client.respawn();
+						sf::Packet respawn_pack;
+						respawn_pack << NetMsg::RESET;
+						client.getSocket().send(respawn_pack);
 					}
 				}
-				updateGrid(tcp_clients);
-				sendPositions(tcp_clients);
-				mutex.unlock();
 				clock.restart();
 			}
 		}
@@ -294,24 +304,29 @@ void Server::sendPositions(TcpClients& tcp_clients)
 
 void Server::updateGrid(TcpClients& tcp_clients)
 {
+	sf::Packet packet;
+	//mutex.lock();
 	for (int i = 0; i < WindowSize::grid_size; i++)
 	{
 		for (int j = 0; j < WindowSize::grid_size; j++)
 		{
+			mutex.lock();
 			for (auto& client : tcp_clients)
 			{
 				if (sf::Vector2i(j, i) == client.getIndexPosition())
 				{
-					mutex.lock();
+					//mutex.lock();
 					grid[(j * WindowSize::grid_size) + i] = client.getClientID();
-					mutex.unlock();
+					//mutex.unlock();
 				}
 			}
+			mutex.unlock();
 		}
 	}
+	sendPositions(tcp_clients);
 }
 
-void Server::refreshGrid(const int& client_id)
+void Server::refreshGrid(const int& client_id, TcpClients& tcp_clients)
 {
 	for (auto& id : grid)
 	{
@@ -320,4 +335,8 @@ void Server::refreshGrid(const int& client_id)
 			id = -1;
 		}
 	}
+	/*for (auto& client : tcp_clients)
+	{
+		client.respawn();
+	}*/
 }

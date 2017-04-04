@@ -19,10 +19,10 @@ public:
 	bool operator == (const Client& rhs);
 	sf::TcpSocket& getSocket();
 
+	void setStartDirection(PlayerMove&);
 	void setDirection(PlayerMove& new_dir) { data.move_dir = new_dir; };
 	void setLatency(std::chrono::microseconds);
-	void setIndexPosition(sf::Vector2i& index) { data.grid_index = index; };
-	void setSpawn(sf::Vector2i& spawn) { data.spawn_pos = spawn; };
+	void setSpawn(sf::Vector2i& spawn);
 
 	sf::Vector2i& getSpawnPoint() { return data.spawn_pos; };
 	sf::Vector2i& getIndexPosition() { return data.grid_index; };
@@ -35,9 +35,8 @@ public:
 	void pong();
 
 	//Game loop updates
-	bool Tick(std::vector<sf::Int32>& grid);
-	bool checkCollisions(std::vector<sf::Int32>& grid);
-
+	void tick();
+	void respawn();
 private:
 	static unsigned int next_id;
 	int id = next_id++;
