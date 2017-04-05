@@ -1,7 +1,11 @@
 #pragma once
+//System libs
+#include <memory>
+#include <vector>
+
+//SFML
 #include <SFML\Network.hpp>
 #include <SFML\Graphics.hpp>
-#include <memory>
 
 using Key = sf::Keyboard::Key;
 
@@ -9,6 +13,7 @@ using Key = sf::Keyboard::Key;
 //Also used by server to create the positions grid
 struct WindowSize
 {
+	//width and height of the client's window
 	const static int width = 600;
 	const static int height = 600;
 
@@ -21,31 +26,29 @@ struct WindowSize
 enum NetMsg : sf::Uint32
 {
 	INVALID = 0,
-	CHAT = 1,
-	MOVEDIR = 2,
-	GRID_STATE = 3,
-	INIT = 4,
-	PING = 5,
-	PONG = 6,
-	DIED = 7,
-	RESET = 8,
+	MOVEDIR = 1,
+	GRID_STATE = 2,
+	INIT = 3,
+	PING = 4,
+	PONG = 5,
 };
 
+//movement directions for the player
 enum PlayerMove : sf::Uint32
 {
-	LEFT = 1,
-	RIGHT = 2,
-	UP = 3,
-	DOWN = 4,
+	UP = 1,
+	LEFT = 2,
+	DOWN = 3,
+	RIGHT = 4,
 };
 
+//stores control schemes for the clients
 struct Controls
 {
-	//Control scheme for the client
-	int up;
-	int left;
-	int down;
-	int right;
+	int up = 0;
+	int left = 0;
+	int down = 0;
+	int right = 0;
 };
 
 //create struct to store player data in
@@ -57,7 +60,7 @@ struct PlayerData
 	PlayerMove move_dir;
 	PlayerMove start_dir;
 	Controls controls;
-	bool is_alive;
+	bool is_alive = true;
 };
 
 struct StartData
@@ -67,14 +70,13 @@ struct StartData
 	std::vector<Key> left = { Key::A, Key::Left, Key::G, Key::L };
 	std::vector<Key> down = { Key::S, Key::Down, Key::H, Key::SemiColon };
 	std::vector<Key> right = { Key::D, Key::Right, Key::J , Key::Quote };
-	std::vector<sf::Color> colours = { sf::Color::Red, sf::Color::Green, sf::Color::Cyan, sf::Color::Yellow };
 	std::vector<PlayerMove> start_dir = { RIGHT, LEFT, DOWN, UP };
 
 	//Grid indices for where each player will begin 
 	std::vector<sf::Vector2i> starting_positions = { 
-		sf::Vector2i(0, WindowSize::grid_size / 2), 
-		sf::Vector2i(WindowSize::grid_size - 1, WindowSize::grid_size / 2),
-		sf::Vector2i(WindowSize::grid_size / 2, 0), 
-		sf::Vector2i(WindowSize::grid_size / 2, WindowSize::grid_size - 1) 
+		sf::Vector2i(0, WindowSize::grid_size / 2),								//Left-mid
+		sf::Vector2i(WindowSize::grid_size - 1, WindowSize::grid_size / 2),		//Right-mid
+		sf::Vector2i(WindowSize::grid_size / 2, 0),								//Top-mid
+		sf::Vector2i(WindowSize::grid_size / 2, WindowSize::grid_size - 1)		//Bottom-mid
 	};
 };

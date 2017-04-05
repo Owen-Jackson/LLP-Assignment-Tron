@@ -1,11 +1,16 @@
-#include "Server.h"
-#include <Game\SharedData.h>
+//System libs
 #include <iostream>
 #include <string>
 #include <algorithm>
 #include <utility>
 #include <future>
 #include <thread>
+
+//SFML
+#include <Game\SharedData.h>
+
+//User defined
+#include "Server.h"
 
 using TcpClient = sf::TcpSocket;
 using TcpClientPtr = std::unique_ptr<TcpClient>;
@@ -15,6 +20,7 @@ const int SERVER_TCP_PORT = 53000;
 const sf::IpAddress SERVER_IP = "127.0.0.1";
 int CURRENT_PORT = SERVER_TCP_PORT;
 
+//custom operators
 sf::Packet& operator << (sf::Packet& packet, sf::Color colour)
 {
 	packet << colour.r << colour.g << colour.b << colour.a;
@@ -76,60 +82,74 @@ void Server::connect(sf::TcpListener& tcp_listener, sf::SocketSelector& selector
 	{
 		selector.add(client_ref);
 
-		auto& client = Client(client_ptr);
+		//make the client equal to the first in the missing client id queue (if needed)
+		if (disconnected_player_ids.size() > 0)
+		{
+			next_id = disconnected_player_ids.top();
+			disconnected_player_ids.pop();
+		}
+		auto& client = Client(client_ptr, next_id);
+
 		//give client their control scheme
 		mutex.lock();
 		sf::Packet init_pack;
 		init_pack << NetMsg::INIT;
 
 		//add client ID
-		init_pack << player_number;
-		std::cout << (sf::Uint32)player_number << std::endl;
+		init_pack << (sf::Uint8)client.getClientID();
 
 		//add controls
-		init_pack << start_data.up[player_number % 4] << start_data.left[player_number % 4] << start_data.down[player_number % 4] << start_data.right[player_number % 4];
-		//std::cout << start_data.up[player_number % 4] << start_data.left[player_number % 4] << start_data.down[player_number % 4] << start_data.right[player_number % 4] << std::endl;
-
+		init_pack << start_data.up[next_id % 4] << start_data.left[next_id % 4] << start_data.down[next_id % 4] << start_data.right[next_id % 4];
+	
 		//add start direction
-		init_pack << start_data.start_dir[player_number % 4];
-		client.setStartDirection(start_data.start_dir[player_number % 4]);
+		init_pack << start_data.start_dir[next_id % 4];
+		client.setStartDirection(start_data.start_dir[next_id % 4]);
 
 		//send pack to new client
 		client.getSocket().send(init_pack);
 
 		//set client's initial position and respawn point
-		client.setSpawn(start_data.starting_positions[player_number % 4]);
+		client.setSpawn(start_data.starting_positions[next_id % 4]);
 
 		//add client to the client list
 		tcp_clients.push_back(std::move(client));
 		std::cout << "client " << client.getClientID() << " connected" << std::endl;
 
+		//make next_id = player_number + 1 if missing id queue is empty
+		if (disconnected_player_ids.size() == 0)
+		{
+			next_id = player_number + 1;
+		}
+
 		//increment the player number
 		player_number++;
 		std::cout << "number of players: " << player_number << std::endl;
-		mutex.unlock();
 
-		/*if (player_number > 2)
-		{
-			sf::Packet disconnect_pack;
-			disconnect_pack << sf::Socket::Status::Disconnected;
-			client.getSocket().send(disconnect_pack);
-			std::cout << "not enough room, kicking client " << client.getClientID() << std::endl;
-		}*/
+		//refresh grid for the current players
+		refreshGrid(tcp_clients);
+		mutex.unlock();
 	}
 }
 
 void Server::disconnect(TcpClients& tcp_clients, Client& client, sf::SocketSelector& selector)
 {
+	mutex.lock();
 	sf::Socket& socket = client.getSocket();
+	//remove socket from selector and disconnect
 	selector.remove(socket);
 	client.getSocket().disconnect();
 	std::cout << "disconnect occurred" << std::endl;
 	std::cout << "Client " << client.getClientID() << " disconnected" << std::endl;
-	std::cout << "number of clients before: " << tcp_clients.size() << std::endl;
+
+	//add client's id to the disconnected queue
+	disconnected_player_ids.push(client.getClientID());
+
+	//remove-erase the client
 	tcp_clients.erase(std::remove(tcp_clients.begin(), tcp_clients.end(), client), tcp_clients.end());
-	std::cout << "number of clients after: " << tcp_clients.size() << std::endl;
+
+	//decrement total players
 	player_number--;
+	mutex.unlock();
 }
 
 void Server::receiveMsg(TcpClients& tcp_clients, sf::SocketSelector& selector)
@@ -141,46 +161,33 @@ void Server::receiveMsg(TcpClients& tcp_clients, sf::SocketSelector& selector)
 		if (selector.isReady(sender_ref))
 		{
 			sf::Packet packet;
+			//check if client has disconnected
 			if (sender_ref.receive(packet) == sf::Socket::Disconnected)
 			{
 				disconnect(tcp_clients, *iter, selector);
 				break;
 			}
+			//read the message header
 			int header = 0;
 			packet >> header;
 
 			NetMsg msg = static_cast<NetMsg>(header);
 
-			if (msg == NetMsg::CHAT)
-			{
-				std::string string;
-				packet >> string;
-
-				//print out the received string
-				std::cout << "Net msg: " << string << std::endl;
-				std::cout << "Latency: " << iter->getLatency().count()
-					<< "us" << std::endl;
-
-				//loop through all connected clients
-				for (auto& client = tcp_clients.begin(); client < tcp_clients.end(); client++)
-				{
-					(*client).getSocket().send(packet);
-				}
-			}
-			else if (msg == NetMsg::MOVEDIR)
+			if (msg == NetMsg::MOVEDIR)
 			{
 				//get move direction from client as int
-				//mutex.lock();
+				mutex.lock();
 				sf::Uint32 new_dir;
 				packet >> new_dir;
+
 				//cast direction to PlayerMove enum then store the value
 				PlayerMove direction = static_cast<PlayerMove>(new_dir);
 				iter->setDirection(direction);
-				std::cout << "player " << iter->getClientID() << " moving: " << new_dir << std::endl;
-				//mutex.unlock();
+				mutex.unlock();
 			}
 			else if (msg == NetMsg::PONG)
 			{
+				//get the client's latency
 				std::cout << "pong called" << std::endl;
 				iter->pong();
 				std::cout << "Client latency: " << iter->getLatency().count() << "us" << std::endl;
@@ -193,7 +200,7 @@ void Server::listen(sf::TcpListener& tcp_listener, sf::SocketSelector& selector,
 {
 	while (true)
 	{
-		if (selector.wait(sf::seconds(5)))
+		if (selector.wait(sf::seconds(10)))
 		{
 			//this is a new conection request
 			if (selector.isReady(tcp_listener))
@@ -226,9 +233,17 @@ void Server::runMe()
 	selector.add(tcp_listener);
 
 	TcpClients tcp_clients;
+
+	//thread for the game logic
 	auto handle1 = std::async(std::launch::async, [&]
 	{
 		runGame(tcp_clients); 
+	});
+
+	//thread to constantly update the grid  and sent it to the clients
+	auto handle2 = std::async(std::launch::async, [&]
+	{
+		updateGrid(tcp_clients);
 	});
 
 	return listen(tcp_listener, selector, tcp_clients);
@@ -236,7 +251,7 @@ void Server::runMe()
 
 void Server::ping(TcpClients& tcp_clients)
 {
-	//loop through all clients
+	//loop through all clients and ping them
 	constexpr auto timeout = 1s;
 	for (auto& client : tcp_clients)
 	{
@@ -264,38 +279,50 @@ void Server::runGame(TcpClients& tcp_clients)
 			elapsed = clock.getElapsedTime();
 			if (elapsed > FPS)
 			{
-				updateGrid(tcp_clients);
+				int alive_players = player_number;
+				mutex.lock();
 				for (auto& client : tcp_clients)
 				{
-					//tick each client, updating their position and sprite position
-					client.tick();
-					if (grid[(client.getIndexPosition().x * WindowSize::grid_size) + client.getIndexPosition().y] != -1)
+					//tick each alive client, updating their position and sprite position
+					if (client.isAlive())
 					{
-						std::cout << "client: " << client.getClientID() << " has died at:" << client.getIndexPosition().x << " , " << client.getIndexPosition().y << std::endl;
-						std::cout << "grid index of death: " << grid[(client.getIndexPosition().x * WindowSize::grid_size) + client.getIndexPosition().y] << std::endl;
-						refreshGrid(client.getClientID(), tcp_clients);
-						client.respawn();
-						sf::Packet respawn_pack;
-						respawn_pack << NetMsg::RESET;
-						client.getSocket().send(respawn_pack);
+						client.tick();
+						//check collisions and kill the player if true
+						if (grid[(client.getIndexPosition().x * WindowSize::grid_size) + client.getIndexPosition().y] != -1)
+						{
+							killPlayer(client);
+						}
+					}
+					else
+					{
+						alive_players--;
 					}
 				}
+				//reset grid when there are multiple players
+				if (alive_players <= 1 && player_number > 1)
+				{
+					refreshGrid(tcp_clients);
+					alive_players = player_number;
+				}
+				//reset the grid for when 1 player is connected to the server
+				else if (alive_players == 0)
+				{
+					refreshGrid(tcp_clients);
+					alive_players = player_number;
+				}
+				mutex.unlock();
 				clock.restart();
 			}
 		}
 	}
 }
 
-//Send each client their own position and other player's positions
+//Send each client the current state of the grid
 void Server::sendPositions(TcpClients& tcp_clients)
 {
 	sf::Packet packet;
 	packet << NetMsg::GRID_STATE;
 	packet << grid;
-	//for (auto& client : tcp_clients)
-	//{
-	//	packet << client.getPosition().x << client.getPosition().y;
-	//}
 	for (auto& client : tcp_clients)
 	{
 		client.getSocket().send(packet);
@@ -304,39 +331,57 @@ void Server::sendPositions(TcpClients& tcp_clients)
 
 void Server::updateGrid(TcpClients& tcp_clients)
 {
-	sf::Packet packet;
-	//mutex.lock();
-	for (int i = 0; i < WindowSize::grid_size; i++)
+	while (true)
 	{
-		for (int j = 0; j < WindowSize::grid_size; j++)
+		mutex.lock();
+		for (int i = 0; i < WindowSize::grid_size; i++)
 		{
-			mutex.lock();
-			for (auto& client : tcp_clients)
+			for (int j = 0; j < WindowSize::grid_size; j++)
 			{
-				if (sf::Vector2i(j, i) == client.getIndexPosition())
+				for (auto& client : tcp_clients)
 				{
-					//mutex.lock();
-					grid[(j * WindowSize::grid_size) + i] = client.getClientID();
-					//mutex.unlock();
+					if (client.isAlive())
+					{
+						//set the grid id at the client's index to be equal to their id
+						if (sf::Vector2i(j, i) == client.getIndexPosition())
+						{
+							grid[(j * WindowSize::grid_size) + i] = client.getClientID();
+						}
+					}
 				}
 			}
-			mutex.unlock();
 		}
+		mutex.unlock();
+		sendPositions(tcp_clients);
 	}
-	sendPositions(tcp_clients);
 }
 
-void Server::refreshGrid(const int& client_id, TcpClients& tcp_clients)
+//Resets the entire grid; used when one player is left in a multiplayer game (or when the only connected player dies)
+void Server::refreshGrid(TcpClients& tcp_clients)
 {
+	mutex.lock();
 	for (auto& id : grid)
 	{
-		if (id == client_id)
+		id = -1;
+	}
+	for (auto& client : tcp_clients)
+	{
+		client.respawn();
+	}
+	mutex.unlock();
+}
+
+//remove the player's trail from the grid and set them to be dead
+void Server::killPlayer(Client& client)
+{
+	mutex.lock();
+	for (auto& id : grid)
+	{
+		if (id == client.getClientID())
 		{
 			id = -1;
 		}
 	}
-	/*for (auto& client : tcp_clients)
-	{
-		client.respawn();
-	}*/
+	client.killMe();
+	mutex.unlock();
 }

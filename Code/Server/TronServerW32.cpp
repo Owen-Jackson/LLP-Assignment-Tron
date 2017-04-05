@@ -1,16 +1,17 @@
 // TronServerW32.cpp : Defines the entry point for the console application.
 //
 
+//System libs
 #include <Server/stdafx.h>
 #include <iostream>
 #include <future>
-#include "Server.h"
 
-unsigned int Client::next_id = 0;
+//User defined
+#include "Server.h"
 
 int main()
 {
-	std::cout << "Searching for life signs...";
+	std::cout << "Welcome to the Tron server. Searching for players...";
 	Server server;
 	server.runMe();
 

@@ -1,9 +1,8 @@
 #include "Client.h"
-#include <iostream>
 
-Client::Client(sf::TcpSocket* _socket) : socket(_socket)
+Client::Client(sf::TcpSocket* _socket, sf::Uint8 my_id) : socket(_socket)
 {
-	next_id = 0;
+	id = my_id;
 }
 
 Client::Client(Client &&rhs)
@@ -71,6 +70,7 @@ void Client::pong()
 
 void Client::tick()
 {
+	//update index position based on current move direction
 	switch (data.move_dir)
 	{
 	case PlayerMove::LEFT:
@@ -106,4 +106,5 @@ void Client::respawn()
 {
 	data.grid_index = data.spawn_pos;
 	data.move_dir = data.start_dir;
+	data.is_alive = true;
 }

@@ -1,19 +1,23 @@
-#include "UserClient.h"
-
+//System libs
 #include <future>
 #include <iostream>
 #include <string>
 #include <random>
+
+//User defined
+#include "UserClient.h"
 
 using TcpClient = sf::TcpSocket;
 using TcpClientPtr = std::unique_ptr<TcpClient>;
 using TcpClients = std::vector<TcpClient>;
 using Key = sf::Keyboard::Key;
 
+//Server constants
 const int SERVER_TCP_PORT = 53000;
 const sf::IpAddress SERVER_IP = "127.0.0.1";
 int CURRENT_PORT = SERVER_TCP_PORT;
 
+//custom operators for packet processing
 sf::Packet& operator >> (sf::Packet& packet, Controls& controls)
 {
 	packet >> controls.up >> controls.left >> controls.down >> controls.right;
@@ -40,10 +44,7 @@ sf::Packet& operator << (sf::Packet& packet, const PlayerMove& dir)
 
 UserClient::UserClient()
 {
-	//set to be alive
-	my_data.is_alive = true;
-
-	//setup the grid to be unused values
+	//setup the grid to be blank values
 	for (int i = 0; i < WindowSize::grid_size; i++)
 	{
 		for (int j = 0; j < WindowSize::grid_size; j++)
@@ -76,6 +77,7 @@ void UserClient::input(TcpClient& client)
 	while (true)
 	{
 		//Check for keyboard input to move the player
+		//Checks are performed to make sure player can't turn 180 on themselves
 		if (keyboard.isKeyPressed((Key)my_data.controls.up) && last_dir != DOWN)
 		{
 			my_data.move_dir = UP;
@@ -119,6 +121,7 @@ void UserClient::input(TcpClient& client)
 
 void UserClient::client()
 {
+	//try to connect to server
 	TcpClient socket;
 	while(!connect(socket))
 	{
@@ -140,22 +143,18 @@ void UserClient::client()
 				packet >> header;
 
 				NetMsg msg = static_cast<NetMsg>(header);
-				if (msg == NetMsg::CHAT)
+				if (msg == NetMsg::INIT)
 				{
-					std::string message;
-					packet >> message;
-					std::cout << "message is: " << message << std::endl;
-				}
-				else if (msg == NetMsg::INIT)
-				{
-
-					std::unique_ptr<sf::RectangleShape> my_sprite = std::make_unique<sf::RectangleShape>();
+					//initialise client-unique data
 					packet >> my_data.client_id;
 					Controls scheme;
+					//set controls
 					if (packet >> scheme)
 					{
 						setControls(scheme);
 					}
+
+					//set initial move direction; when the player dies, their direction is set back to start_dir
 					sf::Uint32 move;
 					packet >> move;
 					my_data.move_dir = (PlayerMove)move;
@@ -164,13 +163,14 @@ void UserClient::client()
 				}
 				else if (msg == NetMsg::PING)
 				{
+					//return pong for latency checks
 					sf::Packet packet;
 					packet << NetMsg::PONG;
 					socket.send(packet);
 				}
 				else if (msg == NetMsg::GRID_STATE)
 				{
-					mutex.lock();
+					//receive grid state from server and update own grid state accordingly
 					sf::Uint32 size;
 					packet >> size;
 					for (int i = 0; i < size; i++)
@@ -179,19 +179,25 @@ void UserClient::client()
 						packet >> index;
 						grid[i] = index;
 					}
-					mutex.unlock();
-				}
-				else if (msg == NetMsg::RESET)
-				{
-					my_data.move_dir = my_data.start_dir;
 				}
 			}
-		} while (status != sf::Socket::Disconnected);
+			else if (status == sf::Socket::Disconnected)
+			{
+				//disconnect socket and retry connection until server comes back
+				//if client loses connection to server this will loop indefinitely
+				socket.disconnect();
+				while (!connect(socket))
+				{
+					;
+				}
+			}
+		} while (true);
 	});
 
 	return input(socket);
 }
 
+//map the keys that this client will use
 void UserClient::setControls(Controls& new_controls)
 {
 	my_data.controls.up = new_controls.up;
